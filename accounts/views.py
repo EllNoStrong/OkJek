@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from orders.models import Order
+from accounts.models import User
 
 
 # =============================
@@ -86,7 +87,7 @@ def login_view(request):
 
             # Driver
             if user.role == "driver":
-                return redirect("drivers:dashboard")
+                return redirect("drivers:driver_dashboard")
 
             # Restaurant
             if user.role == "restaurant":

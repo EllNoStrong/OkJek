@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'payments',
     'theme',
     "tailwind",
-    # "django_browser_reload",
+    "django_browser_reload",
 ]
 
 TAILWIND_APP_NAME = 'theme'
@@ -70,6 +70,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / "templates"],  # tambahkan ini
+        
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -82,6 +83,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'foodorder.wsgi.application'
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 
 # Database

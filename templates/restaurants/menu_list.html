@@ -2,25 +2,54 @@
 {% block content %}
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center">
-        <h3>📋 Restaurant Menu</h3>
-        <a href="{% url 'restaurants:menu_add' %}" class="btn btn-success">+ Add Menu Item</a>
-    </div>
 
-    <div class="mt-4">
-        {% for item in menu %}
-        <div class="card p-3 mb-3 shadow-sm">
-            <h5>{{ item.name }} — Rp {{ item.price }}</h5>
-            <p>{{ item.description }}</p>
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center">
+    <h3>📋 Restaurant Menu</h3>
 
-            <a href="{% url 'restaurants:menu_edit' item.id %}" class="btn btn-warning btn-sm">Edit</a>
-            <a href="{% url 'restaurants:menu_delete' item.id %}" class="btn btn-danger btn-sm"
-               onclick="return confirm('Delete menu item?')">Delete</a>
-        </div>
-        {% empty %}
-        <p>No menu yet.</p>
-        {% endfor %}
+    <div>
+      <!-- Tombol kembali ke dashboard -->
+      <a href="{% url 'restaurants:dashboard' %}" class="btn btn-secondary me-2">
+        ⬅ Kembali ke Dashboard
+      </a>
+
+      <!-- Tombol tambah menu -->
+      <a
+        href="{% url 'restaurants:menu_add' resto.id %}"
+        class="btn btn-success"
+      >
+        + Add Menu Item
+      </a>
     </div>
+  </div>
+
+  <!-- List menu -->
+  <div class="mt-4">
+    {% for item in menus %}
+    <div class="card p-3 mb-3 shadow-sm">
+      <h5>{{ item.name }} — Rp {{ item.price }}</h5>
+      <p>{{ item.description }}</p>
+
+      <a
+        href="{% url 'restaurants:menu_edit' resto.id item.id %}"
+        class="btn btn-warning btn-sm"
+      >
+        Edit
+      </a>
+
+      <a
+        href="{% url 'restaurants:menu_delete' resto.id item.id %}"
+        class="btn btn-danger btn-sm"
+        onclick="return confirm('Delete menu item?')"
+      >
+        Delete
+      </a>
+    </div>
+    {% empty %}
+    <p>No menu yet.</p>
+    {% endfor %}
+  </div>
+
 </div>
 
 {% endblock %}

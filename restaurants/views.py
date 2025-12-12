@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from accounts.decorators import role_required
-from .models import Restaurant, MenuItem
+from .models import Restaurant, MenuItem, MenuCategory
+from orders.models import Order, Payment
 from django.utils import timezone
 
 
@@ -40,12 +41,16 @@ def menu_create(request, resto_id):
 def menu_edit(request, resto_id, id):
     resto = get_object_or_404(Restaurant, id=resto_id, owner=request.user)
     menu = get_object_or_404(MenuItem, id=id, restaurant=resto)
+    
+
 
     if request.method == 'POST':
         menu.name = request.POST.get('name')
         menu.price = request.POST.get('price')
         menu.description = request.POST.get('description')
+        menu.stock = request.POST.get('stock')
         menu.save()
+        
 
         return redirect('restaurants:menu_list', resto_id=resto.id)
 
@@ -74,18 +79,36 @@ def restaurant_list(request):
     return render(request, 'restaurants/list.html', {'restos': restos})
 
 
-@role_required(['admin'])
+@role_required(['admin', 'restaurant'])
 def restaurant_create(request):
+
+    # CEK: Jika user restaurant sudah punya resto → langsung ke dashboard
+    if request.user.role == "restaurant":
+        existing = Restaurant.objects.filter(owner=request.user).first()
+        if existing:
+            return redirect('restaurants:dashboard')
+
     if request.method == 'POST':
+        # owner
+        if request.user.role == 'restaurant':
+            owner = request.user
+        else:
+            owner = User.objects.get(id=request.POST.get('owner'))
+
+        # Buat restaurant baru
         Restaurant.objects.create(
-            owner_id=request.POST.get('owner'),
+            owner=owner,
             name=request.POST.get('name'),
             address=request.POST.get('address'),
             description=request.POST.get('description')
         )
-        return redirect('restaurants:list')
 
-    return render(request, 'restaurants/create.html')
+        return redirect('restaurants:dashboard')
+
+    # GET request
+    users = None if request.user.role == "restaurant" else User.objects.filter(role='restaurant')
+    return render(request, 'restaurants/create.html', {'users': users})
+
 
 
 @role_required(['admin'])
@@ -137,27 +160,39 @@ def dashboard(request):
 # ORDER MANAGEMENT RESTAURANT
 # ============================
 
-def restaurant_orders(request):
-    orders = Order.objects.filter(restaurant=request.user).order_by("-created_at")
-    return render(request, "restaurant/orders.html", {"orders": orders})
+def restaurant_orders(request, resto_id):
+    restaurant = get_object_or_404(Restaurant, id=resto_id)
+
+    orders = Order.objects.filter(
+        restaurant=restaurant
+    ).order_by("-created_at")
+
+    return render(request, "restaurants/orders.html", {
+        "orders": orders,
+        "restaurant": restaurant,
+    })
+
 
 def accept_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id, restaurant=request.user)
+    order = get_object_or_404(Order, id=order_id)
     order.status = "accepted"
     order.save()
-    return redirect("restaurants:restaurant_orders")
+    return redirect("restaurants:restaurant_orders", resto_id=order.restaurant.id)
+
 
 def prepare_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id, restaurant=request.user)
+    order = get_object_or_404(Order, id=order_id)
     order.status = "preparing"
     order.save()
-    return redirect("restaurants:restaurant_orders")
+    return redirect("restaurants:restaurant_orders", resto_id=order.restaurant.id)
+
 
 def ready_order(request, order_id):
-    order = get_object_or_404(Order, id=order_id, restaurant=request.user)
+    order = get_object_or_404(Order, id=order_id)
     order.status = "ready_for_pickup"
     order.save()
-    return redirect("restaurants:restaurant_orders")
+    return redirect("restaurants:restaurant_orders", resto_id=order.restaurant.id)
+
 
 def payment_view(request, order_id):
     order = get_object_or_404(Order, id=order_id)
@@ -180,6 +215,42 @@ def payment_view(request, order_id):
         order.save()
 
         messages.success(request, "Payment confirmed!")
-        return redirect("restaurants:restaurant_orders")
+        return redirect("restaurants:restaurant_orders", resto_id=order.restaurant.id)
 
     return render(request, "restaurant/payment.html", {"order": order})
+
+
+def menu_add(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+
+    if request.method == 'POST':
+        name = request.POST.get("name")
+        price = request.POST.get("price")
+        desc = request.POST.get("description")
+        stock = request.POST.get("stock")
+
+        MenuItem.objects.create(
+            restaurant=restaurant,
+            name=name,
+            price=price,
+            description=desc,
+            stock=stock,
+        )
+        return redirect('restaurants:menu_list', resto_id=restaurant.id)
+
+    return render(request, 'restaurants/menu_add.html')
+
+
+@role_required(['restaurant'])
+def restaurant_payments(request, restaurant_id):
+    restaurant = get_object_or_404(Restaurant, id=restaurant_id)
+
+    payments = Payment.objects.filter(
+        order__restaurant=restaurant
+    ).order_by("-paid_at")
+
+    return render(request, "restaurants/payments.html", {
+        "restaurant": restaurant,
+        "payments": payments,
+    })
+
